@@ -17,6 +17,8 @@
 # $checkout::   If this is true, puppet will ensure that an existing repository is still checked out to $branch. If false, an existing repository will be left alone.
 #
 # $bare::       If this is true, git will create a bare repository
+#
+# $umask::	Override the umask used when running the git commands
 
 define git::repo(
   $path,
@@ -28,6 +30,7 @@ define git::repo(
   $update   = false,
   $checkout = true,
   $bare     = false,
+  $umask    = undef,
 ){
 
   require git
@@ -66,19 +69,21 @@ define git::repo(
   }
 
   exec {"git_repo_${name}":
-    command => $init_cmd,
-    user    => $owner,
-    creates => $creates,
-    require => Package[$git::params::package],
-    timeout => 600,
+    command   => $init_cmd,
+    user      => $owner,
+    creates   => $creates,
+    require   => Package[$git::params::package],
+    timeout   => 600,
+    umask     => $umask,
   }
 
   if $update {
     exec {"git_${name}_pull":
-      user    => $owner,
-      cwd     => $path,
-      command => "${git::params::bin} reset --hard HEAD && ${git::params::bin} pull origin ${branch}",
-      require => Exec["git_repo_${name}"],
+      user      => $owner,
+      cwd       => $path,
+      command   => "${git::params::bin} reset --hard HEAD && ${git::params::bin} pull origin ${branch}",
+      require   => Exec["git_repo_${name}"],
+      umask     => $umask,
     }
   }
 
@@ -92,6 +97,7 @@ define git::repo(
         command   => "${git::params::bin} checkout ${git_tag}",
         unless    => "${git::params::bin} describe --tag|/bin/grep -P '${git_tag}'",
         require   => Exec["git_repo_${name}"],
+        umask     => $umask,
       }
     } elsif ! $bare {
       exec {"git_${name}_co_branch":
@@ -100,8 +106,8 @@ define git::repo(
         command   => "${git::params::bin} checkout ${branch}",
         unless    => "${git::params::bin} branch|/bin/grep -P '\\* ${branch}'",
         require   => Exec["git_repo_${name}"],
+        umask     => $umask,
       }
     }
   }
-
 }
