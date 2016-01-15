@@ -14,6 +14,8 @@
 #
 # $update::     If this is true, puppet will revert local changes and pull remote changes when it runs.
 #
+# $checkout::   If this is true, puppet will ensure that an existing repository is still checked out to $branch. If false, an existing repository will be left alone.
+#
 # $bare::       If this is true, git will create a bare repository
 
 define git::repo(
@@ -24,13 +26,14 @@ define git::repo(
   $owner    = 'root',
   $group    = 'root',
   $update   = false,
-  $bare     = false
+  $checkout = true,
+  $bare     = false,
 ){
 
   require git
   require git::params
 
-  validate_bool($bare, $update)
+  validate_bool($bare, $update, $checkout)
 
   if $branch {
     $real_branch = $branch
@@ -81,21 +84,23 @@ define git::repo(
 
   # I think tagging works, but it's possible setting a tag and a branch will just fight.
   # It should change branches too...
-  if $git_tag {
-    exec {"git_${name}_co_tag":
-      user    => $owner,
-      cwd     => $path,
-      command => "${git::params::bin} checkout ${git_tag}",
-      unless  => "${git::params::bin} describe --tag|/bin/grep -P '${git_tag}'",
-      require => Exec["git_repo_${name}"],
-    }
-  } elsif ! $bare {
-    exec {"git_${name}_co_branch":
-      user    => $owner,
-      cwd     => $path,
-      command => "${git::params::bin} checkout ${branch}",
-      unless  => "${git::params::bin} branch|/bin/grep -P '\\* ${branch}'",
-      require => Exec["git_repo_${name}"],
+  if $checkout {
+    if $git_tag {
+      exec {"git_${name}_co_tag":
+        user      => $owner,
+        cwd       => $path,
+        command   => "${git::params::bin} checkout ${git_tag}",
+        unless    => "${git::params::bin} describe --tag|/bin/grep -P '${git_tag}'",
+        require   => Exec["git_repo_${name}"],
+      }
+    } elsif ! $bare {
+      exec {"git_${name}_co_branch":
+        user      => $owner,
+        cwd       => $path,
+        command   => "${git::params::bin} checkout ${branch}",
+        unless    => "${git::params::bin} branch|/bin/grep -P '\\* ${branch}'",
+        require   => Exec["git_repo_${name}"],
+      }
     }
   }
 
