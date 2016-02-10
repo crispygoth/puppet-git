@@ -19,18 +19,21 @@
 # $bare::       If this is true, git will create a bare repository
 #
 # $umask::	Override the umask used when running the git commands
+#
+# $submodules:: If this is true, then submodules will be initialised and updated after checking out / updating
 
 define git::repo(
   $path,
-  $source   = false,
-  $branch   = undef,
-  $git_tag  = undef,
-  $owner    = 'root',
-  $group    = 'root',
-  $update   = false,
-  $checkout = true,
-  $bare     = false,
-  $umask    = undef,
+  $source     = false,
+  $branch     = undef,
+  $git_tag    = undef,
+  $owner      = 'root',
+  $group      = 'root',
+  $update     = false,
+  $checkout   = true,
+  $bare       = false,
+  $umask      = undef,
+  $submodules = false,
 ){
 
   require git
@@ -108,6 +111,16 @@ define git::repo(
         require   => Exec["git_repo_${name}"],
         umask     => $umask,
       }
+    }
+  }
+
+  if $submodules && ($checkout || $update) {
+    exec {"git_${name}_submodules":
+      user      => $owner,
+      cwd       => $path,
+      command   => "${git::params::bin} submodule init && ${git::params::bin} submodule update",
+      require   => Exec["git_repo_${name}"],
+      umask     => $umask,
     }
   }
 }
