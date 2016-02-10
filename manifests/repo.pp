@@ -114,12 +114,19 @@ define git::repo(
     }
   }
 
-  if $submodules && ($checkout || $update) {
-    exec {"git_${name}_submodules":
+  if ($submodules and ($checkout or $update)) {
+    exec {"git_${name}_submodule_init":
       user      => $owner,
       cwd       => $path,
-      command   => "${git::params::bin} submodule init && ${git::params::bin} submodule update",
+      command   => "${git::params::bin} submodule init",
       require   => Exec["git_repo_${name}"],
+      umask     => $umask,
+    }
+    exec {"git_${name}_submodule_update":
+      user      => $owner,
+      cwd       => $path,
+      command   => "${git::params::bin} submodule update",
+      require   => Exec["git_${name}_submodule_init"],
       umask     => $umask,
     }
   }
